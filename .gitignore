@@ -1,0 +1,15 @@
+.venv
+.idea
+.env
+
+*.py[cod]
+*.cache
+*.log
+*.zip
+*.tar
+*.tar.*
+*.tgz
+
+__pycache__
+
+*.egg-info
