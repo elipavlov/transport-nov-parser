@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 from abc import ABCMeta, abstractproperty
 
+import math
+
 from django.db import models
 
 
@@ -27,15 +29,15 @@ class EnumBase(object):
         return dict(cls.as_revert_tuple())
 
 
-class Directions(EnumBase):
-    NORTH = 0
-    NORTHEAST = 1
-    EAST = 2
-    SOUTHEAST = 3
-    SOUTH = 4
-    SOUTHWEST = 5
-    WEST = 6
-    NORTHWEST = 7
+class GeoDirections(EnumBase):
+    NORTH = 'n'
+    NORTHEAST = 'ne'
+    EAST = 'e'
+    SOUTHEAST = 'se'
+    SOUTH = 's'
+    SOUTHWEST = 'sw'
+    WEST = 'w'
+    NORTHWEST = 'nw'
 
     as_tuple = (
         (NORTH, "Север"),
@@ -46,6 +48,39 @@ class Directions(EnumBase):
         (SOUTHWEST, "Юго-запад"),
         (WEST, "Запад"),
         (NORTHWEST, "Северо-запад"),
+    )
+
+    @classmethod
+    def _normalize_angle(cls, angle):
+        if angle < 0:
+            return 360 + (angle % 360)
+        else:
+            return angle % 360
+
+    @classmethod
+    def from_angle(cls, angle):
+        step = 360/len(cls.as_tuple)
+        angle = cls._normalize_angle(angle)
+        comp_angle = round(angle + step/2, 1)
+        e = 0.1
+        x = 0
+        for key, repr in cls.as_tuple:
+            if x <= comp_angle < x + step:
+                return key
+            x += step
+        else:
+            return cls.NORTH
+
+
+class Directions(EnumBase):
+    FORWARD = 'forward'
+    BACKWARD = 'backward'
+    CIRCULAR = 'circular'
+
+    as_tuple = (
+        (FORWARD, "Вперёд"),
+        (BACKWARD, "Назад"),
+        (CIRCULAR, "Кольцевой"),
     )
 
 
@@ -61,9 +96,79 @@ class DataProviderTypes(EnumBase):
     )
 
 
+class Point(object):
+    lon = 0.0
+    lat = 0.0
+
+    @property
+    def length(self):
+        return math.hypot(self.lon, self.lat)
+
+    def distance_to(self, other):
+        return math.hypot(self.lon-other.lon, self.lat-other.lat)
+
+    def angle(self, other):
+        cos_a = (self * other)/(self.length * other.length)
+        # return math.degrees(math.acos(cos_a))
+        return math.degrees(cos_a)
+
+    def __init__(self, lon=0.0, lat=0.0, repr=None):
+        if repr is not None:
+            lst = repr.replace('POINT', '').\
+                replace('(', '')\
+                .replace(')', '')\
+                .split(' ')
+
+            self.lon = float(lst[0])
+            self.lat = float(lst[1])
+        else:
+            self.lon = lon
+            self.lat = lat
+
+    def __add__(self, other):
+        return Point(
+            self.lon + other.lon,
+            self.lat + other.lat)
+
+    def __sub__(self, other):
+        return Point(
+            self.lon - other.lon,
+            self.lat - other.lat)
+
+    def __mul__(self, other):
+        return self.lon * other.lon + self.lat * other.lat
+
+    def __lshift__(self, other):
+        diff = self - other
+        return Point(
+            self.lon+diff.lon,
+            self.lat+diff.lat)
+
+    def __rshift__(self, other):
+        lon = self.lon-other.lon
+        lat = self.lat-other.lat
+        return Point(
+            self.lon-lon,
+            self.lat-lat)
+
+    def __sub__(self, other):
+        return Point(
+            self.lon - other.lon,
+            self.lat - other.lat)
+
+    def __repr__(self):
+        return 'POINT({lon:.13f} {lat:.13f})'.format(**self.__dict__)
+
+    def __str__(self):
+        return 'Point(lon: {lon:.13f}, lat: {lat:.13f})'.format(**self.__dict__)
+
+    def __unicode__(self):
+        return unicode(str(self))
+
+
 class RouteTypes(EnumBase):
-    BUS = 0
-    TROLLEYBUS = 1
+    BUS = 'bus'
+    TROLLEYBUS = 'trolleybus'
 
     as_tuple = (
         (BUS, "Автобус"),
@@ -79,7 +184,7 @@ class NameAlias(models.Model):
 
 
 class Platform(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     full_name = models.CharField(max_length=200, blank=True, default='')
     description = models.TextField(blank=True, default='')
 
@@ -88,11 +193,22 @@ class Platform(models.Model):
     latitude = models.FloatField(blank=True, null=True,
                                  help_text='Latitude in WGS84 system')
 
-    bidirectional = models.BooleanField(default=False)
-    direction_1 = models.SmallIntegerField(blank=True, null=True,
-                                           choices=Directions.as_tuple)
-    direction_2 = models.SmallIntegerField(blank=True, null=True,
-                                           choices=Directions.as_tuple)
+    geo_direction = models.CharField(max_length=16, blank=True,
+                                     choices=GeoDirections.as_tuple)
+
+    class META:
+        unique_together = ('name', 'longitude', 'latitude')
+
+    def __eq__(self, other):
+        if self.pk:
+            return super(self, Platform).__eq__(other)
+        else:
+            return self.name.strip() == other.name.strip()\
+                and self.longitude == other.longitude\
+                and self.latitude == other.latitude
+
+    def __str__(self):
+        return self.name
 
 
 class PlatformAlias(NameAlias):
@@ -102,7 +218,8 @@ class PlatformAlias(NameAlias):
 class Route(models.Model):
     name = models.CharField(max_length=32)
     code = models.CharField(max_length=32, unique=True)
-    type = models.SmallIntegerField(
+    type = models.CharField(
+        max_length=32,
         choices=RouteTypes.as_tuple,
         default=RouteTypes.BUS,
     )
@@ -110,45 +227,68 @@ class Route(models.Model):
     class META:
         unique_together = ("name", "type")
 
+    def __str__(self):
+        return '%s (%s)' % (self.name, self.type)
+
 
 class DataProviderUrl(models.Model):
     link = models.URLField(help_text='The link for getting data through certain API')
     type = models.CharField(max_length=32, choices=DataProviderTypes.as_tuple)
     coding = models.CharField(max_length=32, default='utf-8')
 
-    route = models.ForeignKey(Route, blank=True, null=True, on_delete=models.CASCADE)
+    route = models.ForeignKey(Route, related_name='data_providers',
+                              blank=True, null=True, on_delete=models.CASCADE)
+
+    class META:
+        unique_together = ("name", "type")
+
+    def __str__(self):
+        return 'route: %s, type: %s' % (self.route, self.type)
 
 
 class RouteWeekDimension(models.Model):
     weekend = models.BooleanField(default=False)
-    weekday = models.SmallIntegerField(default=1,
-                                       help_text="Day of week from 1 to 7, first is monday")
+    weekday = models.SmallIntegerField(
+        default=1,
+        help_text="Day of week from 1 to 7, first is monday")
+
+    def __str__(self):
+        return 'day: %s%s' % (self.weekday, ' we' if self.weekend else '')
 
 
 class RoutePoint(models.Model):
     week_dimension = models.ForeignKey(RouteWeekDimension)
     route = models.ForeignKey(Route,
                               on_delete=models.CASCADE,
-                              related_name='week_points',
-                              )
+                              related_name='route_points')
     platform = models.ForeignKey(Platform,
                                  on_delete=models.CASCADE,
                                  related_name='platforms')
 
     time = models.TimeField(blank=True, null=True)
-    order = models.SmallIntegerField(default=999)
+    skip = models.BooleanField(default=False)
     lap = models.SmallIntegerField(default=-1)
     lap_start = models.BooleanField(default=False)
-    skip = models.BooleanField(default=False)
+    direction = models.CharField(max_length=16, choices=Directions.as_tuple)
+    order = models.SmallIntegerField(default=999)
 
-    direction = models.SmallIntegerField(blank=True, null=True,
-                                           choices=Directions.as_tuple)
+    geo_direction = models.CharField(max_length=16, blank=True,
+                                     choices=GeoDirections.as_tuple)
+    angle = models.FloatField(default=0.0)
+    on_demand = models.BooleanField(default=False)
+
+    class META:
+        unique_together = (('week_dimension', 'route', 'platform'),
+                           ('lap', 'order'))
 
     def next_platform(self):
         raise NotImplemented()
 
     def prev_platform(self):
         raise NotImplemented()
+
+    def __str__(self):
+        return '%s %s %s' % (self.route, self.platform, self.week_dimension)
 
 
 class RouteDateDimension(RouteWeekDimension):
@@ -163,5 +303,6 @@ class RouteDateDimension(RouteWeekDimension):
 
 class RouteSchedule(RoutePoint):
     date_dimension = models.ForeignKey(RouteDateDimension,
+                                       related_name='route_schedules',
                                        on_delete=models.CASCADE)
 

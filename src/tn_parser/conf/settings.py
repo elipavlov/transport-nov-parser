@@ -216,6 +216,11 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': True,
         },
+        'tn_parser': {
+            'level': LOGLEVEL,
+            'handlers': ['console'],
+            # 'propagate': True,
+        },
         # 'celery': {
         #     'level': 'WARNING',
         #     'handlers': ['console'],

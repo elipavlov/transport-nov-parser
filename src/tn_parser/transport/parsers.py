@@ -9,14 +9,17 @@ OPTIONS_RE = re.compile(
 
 
 def get_options_part(raw_data, data_name):
-    # import ipdb; ipdb.set_trace()
+
+    if not raw_data.strip():
+        raise RuntimeError('Empty input data')
+
     options = re.findall(
         OPTIONS_RAW.format(data_name),
         raw_data,
         re.I | re.S)
 
     if len(options) != 1:
-        RuntimeError('Wrong input data')
+        raise RuntimeError('Wrong input data')
 
     return options[0]
 
