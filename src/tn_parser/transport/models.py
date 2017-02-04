@@ -201,7 +201,7 @@ class Platform(models.Model):
 
     def __eq__(self, other):
         if self.pk:
-            return super(self, Platform).__eq__(other)
+            return super(Platform, self).__eq__(other)
         else:
             return self.name.strip() == other.name.strip()\
                 and self.longitude == other.longitude\

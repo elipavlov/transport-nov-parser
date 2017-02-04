@@ -3,6 +3,8 @@
 import logging
 
 import datetime
+from collections import defaultdict
+from copy import copy
 
 import requests
 
@@ -93,19 +95,19 @@ def process_route_platforms_with_2gis(route):
             weekday=1)
 
         dir_ind = 'undefined'
-        sync_batches = {
-            'new': [],
-            'exists': [],
-            'common': [],
-        }
         stats = {
             'created': 0,
             'updated': 0,
         }
+        platforms = {
+            'new': [],
+            'exists': [],
+            'common': [],
+        }
         directions = {
-            Directions.FORWARD: sync_batches,
-            Directions.BACKWARD: sync_batches.copy(),
-            Directions.CIRCULAR: sync_batches.copy(),
+            Directions.FORWARD: defaultdict(list),
+            Directions.BACKWARD: defaultdict(list),
+            Directions.CIRCULAR: defaultdict(list),
         }
         for direction in json['result']['items'][0]['directions']:
             if direction['type'] == 'backward':
@@ -125,25 +127,34 @@ def process_route_platforms_with_2gis(route):
 
                     directions[dir_ind]['exists'].append(exists)
                     directions[dir_ind]['common'].append(exists)
+                    platforms['exists'].append(exists)
+                    platforms['common'].append(exists)
                 except Platform.DoesNotExist:
                     new_platform = Platform(
                         name=platform['name'],
                         longitude=pnt.lon,
                         latitude=pnt.lat)
                     try:
-                        index = directions[dir_ind]['new'].index(new_platform)
-                        logger.warn('This platform already in batch to create')
+                        # logger.warn('Find platform before create')
+                        # index = directions[dir_ind]['new'].index(new_platform)
+                        index = platforms['common'].index(new_platform)
+                        # logger.warn('This platform already in batch to create')
                         directions[dir_ind]['common'].append(
-                            directions[dir_ind]['new'][index])
+                            platforms['common'][index])
                     except ValueError:
                         directions[dir_ind]['new'].append(new_platform)
                         directions[dir_ind]['common'].append(new_platform)
+                        platforms['new'].append(new_platform)
+                        platforms['common'].append(new_platform)
 
         # creating route points
         order = 0
         last = None
         time = datetime.time(0, 0, 0, 0)
         for key, batch in directions.items():
+            # platforms['created'] += len(batch['new'])
+            logger.warn('Route: %s \tDirection: %s\t batch: %s'
+                        % (route.name, key, len(batch['common'])))
             for platform in batch['common']:
                 if not platform.pk:
                     platform.save()
@@ -197,8 +208,10 @@ def process_route_platforms_with_2gis(route):
                 #             % (order, status, route.name, platform.name, angle,))
                 order += 1
 
-        logger.info('route: %s,\t created: %s,\t updated: %s'
-                    % (route.name, stats['created'], stats['updated']))
+        logger.info('route: %s,\t created: %s,\t updated: %s,\t'
+                    'platforms: new: %s,\t exists: %s'
+                    % (route.name, stats['created'], stats['updated'],
+                       len(platforms['new']), len(platforms['exists'])))
         # print(stats)
         return stats
     else:
