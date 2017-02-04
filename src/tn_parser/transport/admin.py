@@ -19,7 +19,12 @@ class RouteAdmin(admin.ModelAdmin):
 
 
 class RoutePointAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('route', 'platform', 'week_dimension',
+                    'time',
+                    'lap', 'order', 'direction', 'geo_direction',
+                    'on_demand', 'skip')
+    list_filter = ('route', 'platform', 'week_dimension', 'direction', )
+    ordering = ('route', 'lap', 'order')
 
 
 class RouteScheduleAdmin(admin.ModelAdmin):
