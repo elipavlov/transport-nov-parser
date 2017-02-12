@@ -239,6 +239,8 @@ class DataProviderUrl(models.Model):
     route = models.ForeignKey(Route, related_name='data_providers',
                               blank=True, null=True, on_delete=models.CASCADE)
 
+    route_code = models.CharField(max_length=32, blank=True, default='')
+
     class META:
         unique_together = ("name", "type")
 
