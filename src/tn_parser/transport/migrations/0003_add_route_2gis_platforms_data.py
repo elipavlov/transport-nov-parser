@@ -30,7 +30,7 @@ route_urls = {
     '15a': '',
     '16': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749033&hash=c33615efbc52943b&fields=items.region_id&key=ruewin2963',
     '17': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749018&hash=403281dee7eb3cbf&fields=items.region_id&key=ruewin2963',
-#    '17a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749021&hash=5d48149c73c578d6&fields=items.region_id&key=ruewin2963',
+    '17a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749021&hash=5d48149c73c578d6&fields=items.region_id&key=ruewin2963',
     '18': '',
     '19': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749025&hash=b4c5161e35eef888&fields=items.region_id&key=ruewin2963',
     '20': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749029&hash=7572b6c5a05256fe&fields=items.region_id&key=ruewin2963',
@@ -51,17 +51,14 @@ route_urls = {
 
 def forwards_func(apps, schema_editor):
     DataProviderUrl = apps.get_model("transport", "DataProviderUrl")
-    Route = apps.get_model("transport", "Route")
-
-    routes = Route.objects.filter(code__in=route_urls.keys())
 
     data_urls = []
-    for rt in routes:
-        if route_urls[rt.code]:
+    for rt_code, link in iter(route_urls.items()):
+        if link:
             data_urls.append(
                 DataProviderUrl(
-                    route=rt,
-                    link=route_urls[rt.code],
+                    route_code=rt_code,
+                    link=link,
                     type=DataProviderTypes.TWOGIS_ROUTE_API,
                 )
             )
@@ -72,11 +69,11 @@ def forwards_func(apps, schema_editor):
 
 def reverse_func(apps, schema_editor):
     DataProviderUrl = apps.get_model("transport", "DataProviderUrl")
-    Route = apps.get_model("transport", "Route")
+
     db_alias = schema_editor.connection.alias
     DataProviderUrl.objects.using(db_alias)\
         .filter(
-            route__code__in=route_urls.keys(),
+            route_code__in=route_urls.keys(),
             type=DataProviderTypes.TWOGIS_ROUTE_API)\
         .delete()
 

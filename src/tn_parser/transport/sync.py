@@ -75,16 +75,30 @@ def get_2gis_data(route):
     :return: json dict from api | None
     :rtype: dict|None
     """
+    data_provider = None
     try:
         data_provider = route.data_providers.get(
             type=p_types.TWOGIS_ROUTE_API)
-
-        resp = requests.get(data_provider.link)
-        return resp.json()
     except DataProviderUrl.DoesNotExist:
+        pass
+
+    try:
+        data_provider = DataProviderUrl.objects.get(
+            route_code=route.code,
+            type=p_types.TWOGIS_ROUTE_API)
+
+        data_provider.route = route
+        data_provider.save()
+    except DataProviderUrl.DoesNotExist:
+        pass
+
+    if not data_provider:
         logger.error(
             'No data providers found for route: {}'.format(route.name))
         return None
+    else:
+        resp = requests.get(data_provider.link)
+        return resp.json()
 
 
 def process_route_platforms_with_2gis(route):
