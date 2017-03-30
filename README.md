@@ -5,6 +5,6 @@ The parser that collects open data for the public transport to present it in a m
 
     The MIT License (MIT)
 
-    Copyright (c) 2015 Eli Pavlov
+    Copyright (c) 2017 Eli Pavlov
 
 Full license text in repo ([link](https://raw.githubusercontent.com/elipavlov/transport-nov-parser/master/LICENSE)).
