@@ -65,10 +65,12 @@ def process_parsed_routes(routes, transport_type):
     })
 
 
-def get_2gis_data(route):
+def get_2gis_data(api_key, route):
     """
     return None or route data got from 2gis API
 
+    :param api_key: key for connecting to API
+    :type str
     :param route: route model for using to look up
     data provider in DB
     :type route: .models.Route
@@ -97,12 +99,12 @@ def get_2gis_data(route):
             'No data providers found for route: {}'.format(route.name))
         return None
     else:
-        resp = requests.get(data_provider.link)
+        resp = requests.get('{}&key={}'.format(data_provider.link, api_key))
         return resp.json()
 
 
-def process_route_platforms_with_2gis(route):
-    json = get_2gis_data(route)
+def process_route_platforms_with_2gis(api_key, route):
+    json = get_2gis_data(api_key, route)
     if json:
         week_dim, _ = RouteWeekDimension.objects.get_or_create(
             weekend=False,
@@ -232,20 +234,20 @@ def process_route_platforms_with_2gis(route):
         return None
 
 
-def process_routes_with_2gis(routes):
+def process_routes_with_2gis(api_key, routes):
     stats = []
     for route in routes:
-        stats.append(process_route_platforms_with_2gis(route))
+        stats.append(process_route_platforms_with_2gis(api_key, route))
 
     return stats
 
 
-def sync_platforms_from_2gis_api(type=None):
+def sync_platforms_from_2gis_api(api_key, type=None):
     # process bus platforms at first
     if not type:
         type = RouteTypes.BUS
     routes = Route.objects.filter(type=type)
 
-    return process_routes_with_2gis(routes=routes)
+    return process_routes_with_2gis(api_key, routes=routes)
 
 

@@ -6,46 +6,47 @@ from django.db import migrations, models
 
 from tn_parser.transport.models import DataProviderTypes
 
+CATALOG_API_REF = 'https://catalog.api.2gis.ru/2.0/transport/route/get?id='
 
-route_urls = {
-    '1': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749035&hash=4947b0e36d4ff7dc&fields=items.region_id&key=ruewin2963',
-    '1a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748993&hash=ea9fdc3a731f066b&fields=items.region_id&key=ruewin2963',
-    '1cr': '',
-    '2': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748998&hash=af602d33dd96a82a&fields=items.region_id&key=ruewin2963',
-    '2k': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749034&hash=c178c8147c14ace2&fields=items.region_id&key=ruewin2963',
-    '4': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749006&hash=067b32d1624a29c9&fields=items.region_id&key=ruewin2963',
-    '5': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749009&hash=be6216338943a382&fields=items.region_id&key=ruewin2963',
-    '6': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749013&hash=bcfcdb7452f119af&fields=items.region_id&key=ruewin2963',
-    '7': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749016&hash=07784e6c02f7d820&fields=items.region_id&key=ruewin2963',
-    '7a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749020&hash=1c683748c58ff6e6&fields=items.region_id&key=ruewin2963',
-    '8a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749024&hash=f1ca3d1530db7f34&fields=items.region_id&key=ruewin2963',
-    '8': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749022&hash=ac7fed6b72bc13bc&fields=items.region_id&key=ruewin2963',
-    '9': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749019&hash=00888df7a0e925ce&fields=items.region_id&key=ruewin2963',
-    '9a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749033&hash=d037999efcda8bc6&fields=items.region_id&key=ruewin2963',
-    '10': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749014&hash=1948b223e109f581&fields=items.region_id&key=ruewin2963',
-    '11': 'https://catalog.api.2gis.ru/2.0/transport/route/get?key=ruewin2963&id=10837392193749010',
-    '12': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749008&hash=f4bead85b8dc849e&fields=items.region_id&key=ruewin2963',
-    '13': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748999&hash=07e6e078200ba5e0&fields=items.region_id&key=ruewin2963',
-    '14': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749003&hash=6d1c8e3395feff8e&fields=items.region_id&key=ruewin2963',
-    '15a': '',
-    '16': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749033&hash=c33615efbc52943b&fields=items.region_id&key=ruewin2963',
-    '17': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749018&hash=403281dee7eb3cbf&fields=items.region_id&key=ruewin2963',
-    '17a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749021&hash=5d48149c73c578d6&fields=items.region_id&key=ruewin2963',
-    '18': '',
-    '19': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749025&hash=b4c5161e35eef888&fields=items.region_id&key=ruewin2963',
-    '20': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749029&hash=7572b6c5a05256fe&fields=items.region_id&key=ruewin2963',
-    '22': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749030&hash=8f2a9017e525977f&fields=items.region_id&key=ruewin2963',
-    '24': '',
-    '26': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749032&hash=398bd36ba1d79a75&fields=items.region_id&key=ruewin2963',
-    '27': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749028&hash=3f2709557e4ca73d&fields=items.region_id&key=ruewin2963',
-    '27a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392235781355&hash=2232c64db37214ae&fields=items.region_id&key=ruewin2963',
-    '35': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749017&hash=a3df880f88cf715f&fields=items.region_id&key=ruewin2963',
-    '35a': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749012&hash=320762815cca56d3&fields=items.region_id&key=ruewin2963',
-    '36': '',
-    '101': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748995&hash=b63a5badfd5d074f&fields=items.region_id&key=ruewin2963',
-    '1t': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748994&hash=f6e1f0b56c442aee&fields=items.region_id&key=ruewin2963',
-    '2t': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193748997&hash=0408eb83402e5e34&fields=items.region_id&key=ruewin2963',
-    '3t': 'https://catalog.api.2gis.ru/2.0/transport/route/get?id=10837392193749000&hash=66944b7c4372ce3a&fields=items.region_id&key=ruewin2963',
+
+route_api_id = {
+    '1': '10837392193749035',
+    '1cr': '10837392193749035',
+    '1a': '10837392193748993',
+    '2': '10837392193748998',
+    '2k': '10837392193749034',
+    '4': '10837392193749006',
+    '5': '10837392193749009',
+    '6': '10837392193749013',
+    '7': '10837392193749016',
+    '7a': '10837392193749020',
+    '8a': '10837392193749024',
+    '8': '10837392193749022',
+    '9': '10837392193749019',
+    '9a': '10837392193749033',
+    '10': '10837392193749014',
+    '11': '10837392193749010',
+    '12': '10837392193749008',
+    '13': '10837392193748999',
+    '14': '10837392193749003',
+    '15a': '10837392193749005',
+    '16': '10837392193749033',
+    '17': '10837392193749018',
+    '17a': '10837392193749021',
+    '18': '10837392193749023',
+    '19': '10837392193749025',
+    '20': '10837392193749029',
+    '22': '10837392193749030',
+    '24': '10837392193749031',
+    '26': '10837392193749032',
+    '27': '10837392193749028',
+    '27a': '10837392235781355',
+    '35': '10837392193749017',
+    '35a': '10837392193749012',
+    '101': '10837392193748995',
+    '1t': '10837392193748994',
+    '2t': '10837392193748997',
+    '3t': '10837392193749000',
 }
 
 
@@ -53,12 +54,12 @@ def forwards_func(apps, schema_editor):
     DataProviderUrl = apps.get_model("transport", "DataProviderUrl")
 
     data_urls = []
-    for rt_code, link in iter(route_urls.items()):
-        if link:
+    for rt_code, rt_id in iter(route_api_id.items()):
+        if rt_id:
             data_urls.append(
                 DataProviderUrl(
                     route_code=rt_code,
-                    link=link,
+                    link='{}{}'.format(CATALOG_API_REF, rt_id),
                     type=DataProviderTypes.TWOGIS_ROUTE_API,
                 )
             )
@@ -73,7 +74,7 @@ def reverse_func(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     DataProviderUrl.objects.using(db_alias)\
         .filter(
-            route_code__in=route_urls.keys(),
+            route_code__in=route_api_id.keys(),
             type=DataProviderTypes.TWOGIS_ROUTE_API)\
         .delete()
 
