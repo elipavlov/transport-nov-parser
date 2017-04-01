@@ -5,7 +5,7 @@ from django.contrib import admin
 from .models import DataProviderUrl, \
     Route, RoutePoint, RouteSchedule, \
     RouteWeekDimension, RouteDateDimension, \
-    Platform, PlatformAlias
+    Platform, PlatformAlias, Stop
 
 
 class DataProviderUrlAdmin(admin.ModelAdmin):
@@ -19,11 +19,11 @@ class RouteAdmin(admin.ModelAdmin):
 
 
 class RoutePointAdmin(admin.ModelAdmin):
-    list_display = ('route', 'platform', 'week_dimension',
+    list_display = ('route', 'stop', 'week_dimension',
                     'time',
                     'lap', 'order', 'direction', 'geo_direction',
                     'on_demand', 'skip')
-    list_filter = ('route', 'platform', 'week_dimension', 'direction', )
+    list_filter = ('route', 'stop', 'week_dimension', 'direction', )
     ordering = ('route', 'lap', 'order')
 
 
@@ -40,6 +40,7 @@ admin.site.register(RouteWeekDimension, admin.ModelAdmin)
 admin.site.register(RouteDateDimension, admin.ModelAdmin)
 
 admin.site.register(Platform, admin.ModelAdmin)
+admin.site.register(Stop, admin.ModelAdmin)
 admin.site.register(PlatformAlias, admin.ModelAdmin)
 
 

@@ -51,7 +51,7 @@ class GeoDirections(EnumBase):
     )
 
     @classmethod
-    def _normalize_angle(cls, angle):
+    def normalize_angle(cls, angle):
         if angle < 0:
             return 360 + (angle % 360)
         else:
@@ -60,7 +60,7 @@ class GeoDirections(EnumBase):
     @classmethod
     def from_angle(cls, angle):
         step = 360/len(cls.as_tuple)
-        angle = cls._normalize_angle(angle)
+        angle = cls.normalize_angle(angle)
         comp_angle = round(angle + step/2, 1)
         e = 0.1
         x = 0
@@ -188,11 +188,6 @@ class Platform(models.Model):
     full_name = models.CharField(max_length=200, blank=True, default='')
     description = models.TextField(blank=True, default='')
 
-    longitude = models.FloatField(blank=True, null=True,
-                                  help_text='Longitude in WGS84 system')
-    latitude = models.FloatField(blank=True, null=True,
-                                 help_text='Latitude in WGS84 system')
-
     geo_direction = models.CharField(max_length=16, blank=True,
                                      choices=GeoDirections.as_tuple)
 
@@ -203,9 +198,7 @@ class Platform(models.Model):
         if self.pk:
             return super(Platform, self).__eq__(other)
         else:
-            return self.name.strip() == other.name.strip()\
-                and self.longitude == other.longitude\
-                and self.latitude == other.latitude
+            return self.name.strip().lower() == other.name.strip().lower()
 
     def __str__(self):
         return self.name
@@ -213,6 +206,31 @@ class Platform(models.Model):
 
 class PlatformAlias(NameAlias):
     platform = models.ForeignKey(Platform, related_name='aliases')
+
+
+class Stop(models.Model):
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE,
+                                 related_name='stops')
+
+    longitude = models.FloatField(blank=True, null=True,
+                                  help_text='Longitude in WGS84 system')
+    latitude = models.FloatField(blank=True, null=True,
+                                 help_text='Latitude in WGS84 system')
+
+    alias = models.OneToOneField(PlatformAlias, null=True,
+                                 on_delete=models.SET_NULL,
+                                 related_name='stop')
+
+    def __eq__(self, other):
+        if self.pk:
+            return super(Stop, self).__eq__(other)
+        else:
+            return self.platform == other.platform\
+                and self.longitude == other.longitude\
+                and self.latitude == other.latitude
+
+    def __repr__(self):
+        return '{} {}'.format(self.platform, Point(self.longitude, self.latitude))
 
 
 class Route(models.Model):
@@ -263,9 +281,9 @@ class RoutePoint(models.Model):
     route = models.ForeignKey(Route,
                               on_delete=models.CASCADE,
                               related_name='route_points')
-    platform = models.ForeignKey(Platform,
-                                 on_delete=models.CASCADE,
-                                 related_name='platforms')
+    stop = models.ForeignKey(Stop,
+                             on_delete=models.CASCADE,
+                             related_name='platforms')
 
     time = models.TimeField(blank=True, null=True)
     skip = models.BooleanField(default=False)

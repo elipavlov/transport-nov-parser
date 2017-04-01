@@ -9,7 +9,8 @@ from copy import copy
 import requests
 
 from .models import Route, DataProviderUrl,\
-    DataProviderTypes as p_types, RouteTypes, Point, Platform, Directions, RoutePoint, RouteWeekDimension, GeoDirections
+    DataProviderTypes as p_types, RouteTypes, Point, Platform, Directions, RoutePoint, RouteWeekDimension, GeoDirections, \
+    PlatformAlias, Stop
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,89 @@ def get_2gis_data(api_key, route):
         return resp.json()
 
 
+def _find_platform(name, to_create_list):
+    """
+    get or create platform
+
+    :param name: look up name
+    :type:  str | unicode
+    :param to_create_list: list of created but not wrote instances
+    :type:  list
+    :return: (platform, alias, created)
+    :rtype: tuple
+    """
+    alias = None
+    alias_list = None
+    created = False
+    platform = None
+
+    for pl in to_create_list:
+        if pl.name == name:
+            platform = pl
+            # created = True
+            break
+    else:
+        try:
+            platform = Platform.objects.get(name=name)
+        except Platform.DoesNotExist:
+            alias_list = PlatformAlias.objects.filter(name=name)
+
+    if not platform:
+        if alias_list and len(alias_list):
+            alias = alias_list[0]
+
+        if alias:
+            platform = alias.platform
+        else:
+            platform = Platform(name=name)
+            created = True
+
+    return platform, alias, created
+
+
+def _find_stop(platform, point, to_create_list, alias=None):
+    """
+    get or create Stop
+
+    :param platform:
+    :type platform: Platform
+    :param point: GEO point
+    :type point: Point
+    :param to_create_list: list of created but not wrote instances
+    :type to_create_list: list
+    :param alias:
+    :type alias: PlatformAlias
+    :return: return tuple(Stop, created)
+    :rtype: tuple
+    """
+    # Platform
+    create = False
+
+    stop = Stop(
+        platform=platform,
+        longitude=point.lon,
+        latitude=point.lat,
+        alias=alias
+    )
+
+    for st in to_create_list:
+        if st == stop:
+            stop = st
+            break
+    else:
+        try:
+            stop = Stop.objects.get(
+                longitude=point.lon,
+                latitude=point.lat)
+        except Stop.DoesNotExist:
+            create = True
+
+    if alias:
+        stop.alias = alias
+
+    return stop, create
+
+
 def process_route_platforms_with_2gis(api_key, route):
     json = get_2gis_data(api_key, route)
     if json:
@@ -120,12 +204,23 @@ def process_route_platforms_with_2gis(api_key, route):
             'exists': [],
             'common': [],
         }
+        stops = {
+            'new': [],
+            'exists': [],
+            'common': [],
+        }
         directions = {
             Directions.FORWARD: defaultdict(list),
             Directions.BACKWARD: defaultdict(list),
             Directions.CIRCULAR: defaultdict(list),
         }
-        for direction in json['result']['items'][0]['directions']:
+
+        try:
+            received_directions = json['result']['items'][0]['directions']
+        except KeyError:
+            raise ValueError('Wrong API response: {}'.format(json))
+
+        for direction in received_directions:
             if direction['type'] == 'backward':
                 dir_ind = Directions.BACKWARD
             elif direction['type'] == 'forward':
@@ -133,59 +228,85 @@ def process_route_platforms_with_2gis(api_key, route):
             elif direction['type'] == 'circular':
                 dir_ind = Directions.CIRCULAR
 
-            for platform in direction['platforms']:
-                pnt = Point(repr=platform['geometry']['centroid'])
-                try:
-                    exists = Platform.objects.get(
-                        name=platform['name'],
-                        longitude=pnt.lon,
-                        latitude=pnt.lat)
+            for r_stop in direction['platforms']:
+                pnt = Point(repr=r_stop['geometry']['centroid'])
 
-                    directions[dir_ind]['exists'].append(exists)
-                    directions[dir_ind]['common'].append(exists)
-                    platforms['exists'].append(exists)
-                    platforms['common'].append(exists)
-                except Platform.DoesNotExist:
-                    new_platform = Platform(
-                        name=platform['name'],
-                        longitude=pnt.lon,
-                        latitude=pnt.lat)
-                    try:
-                        # logger.warn('Find platform before create')
-                        # index = directions[dir_ind]['new'].index(new_platform)
-                        index = platforms['common'].index(new_platform)
-                        # logger.warn('This platform already in batch to create')
-                        directions[dir_ind]['common'].append(
-                            platforms['common'][index])
-                    except ValueError:
-                        directions[dir_ind]['new'].append(new_platform)
-                        directions[dir_ind]['common'].append(new_platform)
-                        platforms['new'].append(new_platform)
-                        platforms['common'].append(new_platform)
+                # find platform
+                platform, alias, platform_crtd = _find_platform(r_stop['name'], platforms['new'])
+                stop, stop_crt = _find_stop(platform, pnt, stops['new'], alias)
+
+                if platform_crtd:
+                    platforms['new'].append(platform)
+                else:
+                    platforms['exists'].append(platform)
+                platforms['common'].append(platform)
+
+                if stop_crt:
+                    stops['new'].append(stop)
+                    directions[dir_ind]['exists'].append(stop)
+                else:
+                    stops['exists'].append(stop)
+                    directions[dir_ind]['common'].append(stop)
+                stops['common'].append(stop)
+
+                # try:
+                #     exists = Platform.objects.get(
+                #         name=r_stop['name'],
+                #         longitude=pnt.lon,
+                #         latitude=pnt.lat)
+                #
+                #     directions[dir_ind]['exists'].append(exists)
+                #     directions[dir_ind]['common'].append(exists)
+                #     platforms['exists'].append(exists)
+                #     platforms['common']+
+                # except Platform.DoesNotExist:
+                #     new_platform = Platform(
+                #         name=platform['name'],
+                #         longitude=pnt.lon,
+                #         latitude=pnt.lat)
+                #     try:
+                #         # logger.warn('Find platform before create')
+                #         # index = directions[dir_ind]['new'].index(new_platform)
+                #         index = platforms['common'].index(new_platform)
+                #         # logger.warn('This platform already in batch to create')
+                #         directions[dir_ind]['common'].append(
+                #             platforms['common'][index])
+                #     except ValueError:
+                #         directions[dir_ind]['new'].append(new_platform)
+                #         directions[dir_ind]['common'].append(new_platform)
+                #         platforms['new'].append(new_platform)
+                #         platforms['common'].append(new_platform)
+
+        logger.info('Route: %s \t platforms: %s'
+                    % (route.name, len(platforms['common'])))
+        for platform in platforms['new']:
+            platform.save()
 
         # creating route points
         order = 0
         last = None
         time = datetime.time(0, 0, 0, 0)
         for key, batch in directions.items():
-            # platforms['created'] += len(batch['new'])
-            logger.warn('Route: %s \tDirection: %s\t batch: %s'
+            logger.info('Route: %s \tDirection: %s\t stops: %s'
                         % (route.name, key, len(batch['common'])))
-            for platform in batch['common']:
-                if not platform.pk:
-                    platform.save()
+            for stop in batch['common']:
+                if not stop.pk:
+                    stop.platform = stop.platform
+                    stop.save()
 
+                # calculate angel between prev and current stop
+                pnt = Point(
+                    lon=stop.longitude,
+                    lat=stop.latitude)
                 if last:
                     last_pnt = Point(
-                        lon=last.platform.longitude,
-                        lat=last.platform.latitude)
-                    pnt = Point(
-                        lon=platform.longitude,
-                        lat=platform.latitude)
+                        lon=last.stop.longitude,
+                        lat=last.stop.latitude)
                     angle = pnt.angle(last_pnt)
                     angle += last.angle
-                    angle = GeoDirections._normalize_angle(angle)
+                    angle = GeoDirections.normalize_angle(angle)
                 else:
+                    last_pnt = Point(0, 0)
                     angle = 0
 
                 geo_direction = GeoDirections.from_angle(angle)
@@ -198,9 +319,9 @@ def process_route_platforms_with_2gis(api_key, route):
                         + datetime.timedelta(0, int(time_delta))
                     time = dt.time()
 
-                last, _ = RoutePoint.objects.update_or_create(
+                last, last_crtd = RoutePoint.objects.update_or_create(
                     route=route,
-                    platform=platform,
+                    stop=stop,
                     week_dimension=week_dim,
                     lap=0,
                     order=order,
@@ -210,21 +331,21 @@ def process_route_platforms_with_2gis(api_key, route):
                         'direction': key,
                         'geo_direction': geo_direction,
                         'angle': angle,
-                        'on_demand': platform.name.lower().find(u'по требованию')>=0
+                        'on_demand': stop.platform.name.lower().find(u'по требованию')>=0
                     }
                 )
 
-                if _:
+                if last_crtd:
                     stats['created'] += 1
                 else:
                     stats['updated'] += 1
 
-                status = 'created' if _ else 'updated'
-                # logger.info('Order %s, %s, route: %s, platforms: %s, angle %s'
-                #             % (order, status, route.name, platform.name, angle,))
+                # status = 'created' if last_crtd else 'updated'
+                # # logger.info('Order %s, %s, route: %s, platforms: %s, angle %s'
+                # #             % (order, status, route.name, platform.name, angle,))
                 order += 1
 
-        logger.info('route: %s,\t created: %s,\t updated: %s,\t'
+        logger.info('Route: %s,\t created: %s,\t updated: %s,\t'
                     'platforms: new: %s,\t exists: %s'
                     % (route.name, stats['created'], stats['updated'],
                        len(platforms['new']), len(platforms['exists'])))
