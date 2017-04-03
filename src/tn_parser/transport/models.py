@@ -160,7 +160,7 @@ class Point(object):
         return 'POINT({lon:.13f} {lat:.13f})'.format(**self.__dict__)
 
     def __str__(self):
-        return 'Point(lon: {lon:.13f}, lat: {lat:.13f})'.format(**self.__dict__)
+        return 'Point(lon: {lon:.6f}, lat: {lat:.6f})'.format(**self.__dict__)
 
     def __unicode__(self):
         return unicode(str(self))
@@ -191,8 +191,10 @@ class Platform(models.Model):
     geo_direction = models.CharField(max_length=16, blank=True,
                                      choices=GeoDirections.as_tuple)
 
-    class META:
-        unique_together = ('name', 'longitude', 'latitude')
+    def get_queryset(self, request):
+        qs = super(Platform, self).get_queryset(request)
+        qs = qs.annotate(models.Count('stops'))
+        return qs
 
     def __eq__(self, other):
         if self.pk:
@@ -221,6 +223,9 @@ class Stop(models.Model):
                                  on_delete=models.SET_NULL,
                                  related_name='stop')
 
+    class META:
+        unique_together = ('platform', 'longitude', 'latitude')
+
     def __eq__(self, other):
         if self.pk:
             return super(Stop, self).__eq__(other)
@@ -231,6 +236,9 @@ class Stop(models.Model):
 
     def __repr__(self):
         return '{} {}'.format(self.platform, Point(self.longitude, self.latitude))
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class Route(models.Model):

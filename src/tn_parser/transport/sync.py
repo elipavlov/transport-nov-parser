@@ -246,36 +246,9 @@ def process_route_platforms_with_2gis(api_key, route):
                     directions[dir_ind]['exists'].append(stop)
                 else:
                     stops['exists'].append(stop)
-                    directions[dir_ind]['common'].append(stop)
+                    # directions[dir_ind]['common'].append(stop)
+                directions[dir_ind]['common'].append(stop)
                 stops['common'].append(stop)
-
-                # try:
-                #     exists = Platform.objects.get(
-                #         name=r_stop['name'],
-                #         longitude=pnt.lon,
-                #         latitude=pnt.lat)
-                #
-                #     directions[dir_ind]['exists'].append(exists)
-                #     directions[dir_ind]['common'].append(exists)
-                #     platforms['exists'].append(exists)
-                #     platforms['common']+
-                # except Platform.DoesNotExist:
-                #     new_platform = Platform(
-                #         name=platform['name'],
-                #         longitude=pnt.lon,
-                #         latitude=pnt.lat)
-                #     try:
-                #         # logger.warn('Find platform before create')
-                #         # index = directions[dir_ind]['new'].index(new_platform)
-                #         index = platforms['common'].index(new_platform)
-                #         # logger.warn('This platform already in batch to create')
-                #         directions[dir_ind]['common'].append(
-                #             platforms['common'][index])
-                #     except ValueError:
-                #         directions[dir_ind]['new'].append(new_platform)
-                #         directions[dir_ind]['common'].append(new_platform)
-                #         platforms['new'].append(new_platform)
-                #         platforms['common'].append(new_platform)
 
         logger.info('Route: %s \t platforms: %s'
                     % (route.name, len(platforms['common'])))

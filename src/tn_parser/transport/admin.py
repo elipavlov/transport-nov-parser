@@ -1,4 +1,5 @@
 # coding=utf-8
+from django.db import models
 
 from django.contrib import admin
 
@@ -30,6 +31,24 @@ class RoutePointAdmin(admin.ModelAdmin):
 class RouteScheduleAdmin(admin.ModelAdmin):
     pass
 
+
+class StopAdmin(admin.ModelAdmin):
+    list_display = ('platform', 'latitude', 'longitude')
+    list_filter = ('platform', )
+    ordering = ('platform', )
+
+
+class PlatformAdmin(admin.ModelAdmin):
+    list_display = ('name', 'stops_count', )
+    ordering = ('name', )
+
+    def stops_count(self, obj):
+        # return obj.stops__count
+        return obj.stops.count()
+
+    # stops_count.admin_order_field = 'stops_count'
+
+
 admin.site.register(DataProviderUrl, DataProviderUrlAdmin)
 admin.site.register(Route, RouteAdmin)
 admin.site.register(RoutePoint, RoutePointAdmin)
@@ -39,8 +58,8 @@ admin.site.register(RouteSchedule, RouteScheduleAdmin)
 admin.site.register(RouteWeekDimension, admin.ModelAdmin)
 admin.site.register(RouteDateDimension, admin.ModelAdmin)
 
-admin.site.register(Platform, admin.ModelAdmin)
-admin.site.register(Stop, admin.ModelAdmin)
+admin.site.register(Platform, PlatformAdmin)
+admin.site.register(Stop, StopAdmin)
 admin.site.register(PlatformAlias, admin.ModelAdmin)
 
 
