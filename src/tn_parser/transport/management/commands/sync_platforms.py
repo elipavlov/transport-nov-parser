@@ -4,8 +4,8 @@ import logging
 
 from django.core.management.base import BaseCommand, CommandError
 
-from tn_parser.transport.models import RouteTypes
-from tn_parser.transport.sync import sync_platforms_from_2gis_api
+from ...models import RouteTypes
+from ...sync import sync_platforms_from_2gis_api
 
 logger = logging.getLogger(__name__)
 
