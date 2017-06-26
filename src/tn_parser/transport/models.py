@@ -2,17 +2,18 @@
 
 from __future__ import unicode_literals
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractmethod
+import six
 
 import math
 
 from django.db import models
 
 
-class EnumBase(object):
-    __metaclass__ = ABCMeta
+class EnumBase(six.with_metaclass(ABCMeta, object)):
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def as_tuple(self):
         raise NotImplemented()
 
@@ -249,6 +250,7 @@ class Route(models.Model):
         choices=RouteTypes.as_tuple,
         default=RouteTypes.BUS,
     )
+    canceled = models.DateField(blank=True, null=True, default=None)
 
     class META:
         unique_together = ("name", "type")
@@ -291,7 +293,7 @@ class RoutePoint(models.Model):
                               related_name='route_points')
     stop = models.ForeignKey(Stop,
                              on_delete=models.CASCADE,
-                             related_name='platforms')
+                             related_name='route_points')
 
     time = models.TimeField(blank=True, null=True)
     skip = models.BooleanField(default=False)
@@ -309,14 +311,14 @@ class RoutePoint(models.Model):
         unique_together = (('week_dimension', 'route', 'platform'),
                            ('lap', 'order'))
 
-    def next_platform(self):
+    def next_stop(self):
         raise NotImplemented()
 
-    def prev_platform(self):
+    def prev_stop(self):
         raise NotImplemented()
 
     def __str__(self):
-        return '%s %s %s' % (self.route, self.platform, self.week_dimension)
+        return '%s %s %s' % (self.route, self.stop, self.week_dimension)
 
 
 class RouteDateDimension(RouteWeekDimension):
