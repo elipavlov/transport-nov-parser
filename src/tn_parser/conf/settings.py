@@ -176,14 +176,14 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s'  # %(thread)d
         },
         'simple': {
             'format': '%(levelname)s %(message)s',
              'datefmt': '%y %b %d, %H:%M:%S',
         },
         "custom_console": {
-            "format": "%(asctime)s %(message)s",
+            "format": "%(asctime)s %(levelname)s %(message)s",
             "datefmt": "%H:%M:%S",
         },
     },
