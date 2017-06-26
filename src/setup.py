@@ -14,6 +14,7 @@ install_requires = [
     'django-environ>=0.4.0,<1.0.0',
     'mysqlclient>=1.3.6,<1.4',
     'requests[security]<3',
+    'beautifulsoup4',
     'raven<6.1',
 ]
 
