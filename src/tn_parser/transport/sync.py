@@ -3,7 +3,8 @@
 import logging
 
 import datetime
-from collections import defaultdict
+import re
+from collections import defaultdict, OrderedDict
 from copy import copy
 
 import requests
@@ -41,12 +42,17 @@ def process_parsed_routes(routes, transport_type):
     parsed = set([route['code'].split('_')[0] for route in routes])
     exists = set(Route.objects
                  .filter(type=transport_type)
-                 .values_list('code', flat=True)
-                 .order_by('code'))
+                 .values_list('code', flat=True))
 
     diff = parsed - exists
+    canceled_now = exists - parsed
 
-    batch = []
+    canceled_already = set(Route.objects
+        .filter(type=transport_type)
+        .exclude(canceled=None)
+        .values_list('code', flat=True))
+
+    create_batch = []
     for route_dict in routes:
         route = dict(**route_dict)
         route.update({
@@ -54,15 +60,25 @@ def process_parsed_routes(routes, transport_type):
             'type': transport_type,
         })
         if route['code'] in diff:
-            batch.append(Route(**route))
+            create_batch.append(Route(**route))
 
-    if len(batch):
-        Route.objects.bulk_create(batch)
+    canceled = [route_code
+                for route_code in canceled_now
+                if route_code not in canceled_already]
+
+    if canceled:
+        Route.objects.filter(code__in=canceled)\
+            .update(canceled=datetime.datetime.now().date())
+
+    if len(create_batch):
+        Route.objects.bulk_create(create_batch)
 
     return _adds_count_of_sets_to_dict({
         'added': diff,
         'updated': parsed - diff,
         'exists': exists,
+        'canceled': canceled,
+        'canceled_total': canceled_already,
     })
 
 
@@ -220,13 +236,22 @@ def process_route_platforms_with_2gis(api_key, route):
         except KeyError:
             raise ValueError('Wrong API response: {}'.format(json))
 
-        for direction in received_directions:
-            if direction['type'] == 'backward':
-                dir_ind = Directions.BACKWARD
-            elif direction['type'] == 'forward':
+        order_matters = sorted(
+            received_directions,
+            key=lambda direction: direction['type'], reverse=True)
+
+        for direction in order_matters:
+            logger.info('Start from: {}'.format(direction['type']))
+            if direction['type'] == 'forward':
                 dir_ind = Directions.FORWARD
+            elif direction['type'] == 'backward':
+                dir_ind = Directions.BACKWARD
             elif direction['type'] == 'circular':
                 dir_ind = Directions.CIRCULAR
+            else:
+                # TODO implement additional type: weekend meaning
+                logger.warning('Skip this direction: {}'.format(direction['type']))
+                continue
 
             for r_stop in direction['platforms']:
                 pnt = Point(repr=r_stop['geometry']['centroid'])
@@ -344,4 +369,60 @@ def sync_platforms_from_2gis_api(api_key, type=None):
 
     return process_routes_with_2gis(api_key, routes=routes)
 
+
+def process_platform_input(raw_platform):
+    _map = {'отпр': 'start', 'приб': 'finish'}
+    extreme = None
+    for k, v in _map.items():
+        if k in raw_platform:
+            raw_platform = raw_platform.replace('{}.'.format(k), '')
+            raw_platform = raw_platform.replace(k, '')
+            extreme = v
+            break
+
+    aliase = None
+    _subaliase = re.compile('\((.+?)\)')
+    res = _subaliase.search(raw_platform)
+    if res:
+        aliase = res.group(1)
+        raw_platform = raw_platform.replace('({})'.format(aliase), '')
+
+    raw_pltfs = [raw_platform]
+    if aliase:
+        raw_pltfs.append(aliase)
+
+    _platform_prefix = ('ул', 'п', 'пл', 'пер', 'пр')
+
+    pltfs = []
+    for pltf in raw_pltfs:
+        parts = pltf.strip().split(' ')
+        platform = []
+        # clear raw
+        for part in parts:
+            skip = False
+            for w in _platform_prefix:
+                if part.lower() == w or part.lower() == '{}.'.format(w):
+                    skip = True
+                    break
+
+            if not skip:
+                platform.append(part)
+
+        pltf = ' '.join(platform).strip()
+        parts = pltf.strip().split('.')
+        platform = []
+        # clear raw
+        for part in parts:
+            skip = False
+            for w in _platform_prefix:
+                if part.lower() == w:
+                    skip = True
+                    break
+
+            if not skip:
+                platform.append(part)
+
+        pltfs.append('.'.join(platform).strip())
+
+    return pltfs, extreme
 
