@@ -1,0 +1,12 @@
+django>=1.10,<1.11
+django-environ>=0.4.0,<1.0.0
+# mysqlclient>=1.3.9, <1.4
+requests[security]<3
+beautifulsoup4
+raven<6
+
+ipdb
+django-cors-headers
+pytest
+pytest-cov
+pytest-django

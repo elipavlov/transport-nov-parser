@@ -12,7 +12,6 @@ version = __import__('tn_parser').__version__
 install_requires = [
     'django>=1.10,<1.11',
     'django-environ>=0.4.0,<1.0.0',
-    'mysqlclient>=1.3.6,<1.4',
     'requests[security]<3',
     'beautifulsoup4',
     'raven<6.1',
@@ -40,5 +39,8 @@ setup(
 
     extras_require={
         'dev': dev_requires,
+        'mysql': [
+            'mysqlclient>=1.3.6,<1.4',
+        ]
     }
 )

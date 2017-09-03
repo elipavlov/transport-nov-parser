@@ -2,8 +2,10 @@ ve
 .ve
 venv
 .venv
+.ve*
 .idea
 .env
+*.env*
 
 *.py[cod]
 *.cache
