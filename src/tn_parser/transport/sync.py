@@ -238,7 +238,7 @@ def process_route_platforms_with_2gis(api_key, route):
 
         order_matters = sorted(
             received_directions,
-            key=lambda direction: direction['type'], reverse=True)
+            key=lambda direction: direction['type'], reverse=False)
 
         for direction in order_matters:
             logger.info('Start from: {}'.format(direction['type']))
@@ -361,10 +361,7 @@ def process_routes_with_2gis(api_key, routes):
     return stats
 
 
-def sync_platforms_from_2gis_api(api_key, type=None):
-    # process bus platforms at first
-    if not type:
-        type = RouteTypes.BUS
+def sync_platforms_from_2gis_api(api_key, type):
     routes = Route.objects.filter(type=type)
 
     return process_routes_with_2gis(api_key, routes=routes)
