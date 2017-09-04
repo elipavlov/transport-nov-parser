@@ -22,5 +22,5 @@ def parse_rus_date_to_naive_date(date_str):
     if month < 0:
         raise ValueError('Can not parse this rus date: {}'.format(date_str))
 
-    return date(int(parts[2]), month+1, int(parts[0]))
+    return date(int(parts[2].strip()), month+1, int(parts[0].strip()))
 

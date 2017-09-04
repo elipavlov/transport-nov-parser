@@ -368,30 +368,38 @@ def sync_platforms_from_2gis_api(api_key, type):
 
 
 def process_platform_input(raw_platform):
+    result = {
+        'raw': raw_platform.strip(),
+        'raw_aliases': set(),
+        'aliases': set(),
+        'parts': set(),
+        'extreme': None,
+    }
+
     _map = {'отпр': 'start', 'приб': 'finish'}
-    extreme = None
     for k, v in _map.items():
         if k in raw_platform:
             raw_platform = raw_platform.replace('{}.'.format(k), '')
             raw_platform = raw_platform.replace(k, '')
-            extreme = v
+            result['extreme'] = v
             break
 
-    aliase = None
+    alias = None
     _subaliase = re.compile('\((.+?)\)')
     res = _subaliase.search(raw_platform)
     if res:
-        aliase = res.group(1)
-        raw_platform = raw_platform.replace('({})'.format(aliase), '')
+        alias = res.group(1)
+        raw_platform = raw_platform.replace('({})'.format(alias), '')
 
-    raw_pltfs = [raw_platform]
-    if aliase:
-        raw_pltfs.append(aliase)
+    result['raw_aliases'].add(raw_platform.strip())
+    if alias:
+        result['raw_aliases'].add(alias)
+        # result['aliases'].add(alias)
 
     _platform_prefix = ('ул', 'п', 'пл', 'пер', 'пр')
 
     pltfs = []
-    for pltf in raw_pltfs:
+    for pltf in result['raw_aliases']:
         parts = pltf.strip().split(' ')
         platform = []
         # clear raw
@@ -406,6 +414,8 @@ def process_platform_input(raw_platform):
                 platform.append(part)
 
         pltf = ' '.join(platform).strip()
+        result['aliases'].add(pltf)
+
         parts = pltf.strip().split('.')
         platform = []
         # clear raw
@@ -419,7 +429,8 @@ def process_platform_input(raw_platform):
             if not skip:
                 platform.append(part)
 
-        pltfs.append('.'.join(platform).strip())
+        sterilized = '.'.join(platform).strip()
+        result['aliases'].add(sterilized)
 
-    return pltfs, extreme
+    return result
 
