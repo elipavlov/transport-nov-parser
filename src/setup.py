@@ -10,11 +10,11 @@ if os.environ.get('USER', '') == 'vagrant':
 version = __import__('tn_parser').__version__
 
 install_requires = [
-    'django>=1.10,<1.11',
+    'django>=1.11.15,<2',
     'django-environ>=0.4.0,<1.0.0',
     'requests[security]<3',
     'beautifulsoup4',
-    'raven<6.1',
+    'raven<7',
 ]
 
 dev_requires = [
@@ -34,9 +34,7 @@ setup(
     url='https://www.python.org/sigs/distutils-sig/',
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-
     install_requires=install_requires,
-
     extras_require={
         'dev': dev_requires,
         'mysql': [
